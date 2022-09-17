@@ -6,6 +6,23 @@ from matplotlib.widgets import RectangleSelector
 import matplotlib.lines as mlines
 import math
 
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+
+selected_axis = None
+
+
+def enter_axes(event):
+    global selected_axis
+    selected_axis = event.inaxes
+
+
+# def leave_axes(event):
+#    selected_axis = None
+
+
+fig.canvas.mpl_connect('axes_enter_event', enter_axes)
+#fig.canvas.mpl_connect('axes_leave_event', leave_axes)
+
 
 class ItkImage:
     def __init__(self, filename: str) -> None:
@@ -71,8 +88,12 @@ class ItkImage:
 
 
 class VolumeImage:
-    def scrollSetup(self):
+
+    def eventSetup(self):
         def onScroll(event):
+            if selected_axis is not self.ax:
+                return
+
             if event.button == "up":
                 self.index += 1
             if event.button == "down":
@@ -90,16 +111,16 @@ class VolumeImage:
 
 
 class PlotBoundingBox(VolumeImage):
-    def __init__(self, image: ItkImage,  onSetBoundingBoxFunc=None, title="BoundingBox") -> None:
+    def __init__(self, image: ItkImage, ax, onSetBoundingBoxFunc=None, title="BoundingBox") -> None:
         self.image = image
-        self.fig = plt.figure(title)
-        self.ax = plt.subplot()
+        self.fig = fig
+        self.ax = ax
         self.index = int(len(self.image.ct_scan)/2)
         self.boundingbox = None
         self.patch = None
         self.onSetBoundingBoxFunc = onSetBoundingBoxFunc
         self.ax_data = self.ax.imshow(self.image.ct_scan[self.index])
-        self.scrollSetup()
+        self.eventSetup()
 
         def areaSelect(click, release):
             self.boundingbox = ((click.xdata, click.ydata), (release.xdata, release.ydata))
@@ -119,31 +140,40 @@ class PlotBoundingBox(VolumeImage):
 
 
 class PlotPlaneSelect(VolumeImage):
-    def __init__(self, image: ItkImage, onSetPlane=None, title="PlaneSelect") -> None:
+    def __init__(self, image: ItkImage, ax, onSetPlane=None, title="PlaneSelect") -> None:
         self.image = image
-        self.fig = plt.figure(title)
-        self.ax = plt.subplot()
+        self.fig = fig
+        self.ax = ax
         self.index = int(len(self.image.ct_scan)/2)
         self.plane = None
         self.patch = None
         self.onSetPlane = onSetPlane
         self.ax_data = self.ax.imshow(self.image.ct_scan[self.index])
-        self.scrollSetup()
+        self.eventSetup()
 
         self.selectedLine = (None, None)
         self.pressed = False
 
         def onButtonPress(event):
+            if selected_axis is not self.ax:
+                return
+
             self.pressed = True
             self.selectedLine = ((event.xdata, event.ydata), None)
 
         def onButtonRelease(event):
+            if selected_axis is not self.ax:
+                return
+
             self.pressed = False
             self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
             if self.onSetPlane:
                 self.onSetPlane(self)
 
         def onMouseMove(event):
+            if selected_axis is not self.ax:
+                return
+
             if not self.pressed:
                 return
             self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
@@ -161,26 +191,26 @@ class PlotPlaneSelect(VolumeImage):
         self.fig.canvas.mpl_connect('button_release_event', onButtonRelease)
 
 
-plot_ps2 = PlotPlaneSelect(ItkImage("test_data/image.mhd"), title="Plane 2 select")
+plot_ps2 = PlotPlaneSelect(ItkImage("test_data/image.mhd"), ax3, title="Plane 2 select")
 
 
 def onPlane1Set(plot: PlotPlaneSelect):
     ((x1, y1), (x2, y2)) = plot.selectedLine
     if y1 > y2:
         x1, y1, x2, y2 = x2, y2, x1, y1
-    direction = 1 if x1 > x2 else -1
+    quadrant = 0 if x1 > x2 else 90
 
     a = abs(plot.selectedLine[0][0] - plot.selectedLine[1][0])
     b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
     rad = math.atan(a/b)
-    deg = math.degrees(rad) * direction
+    deg = math.degrees(rad)
     print(f'atan(x) :{rad}, deg: {deg}')
     plot_ps2.image.rotation3d(0, 90, deg)
     plot_ps2.redraw()
 
 
-plot_bb = PlotBoundingBox(ItkImage("test_data/image.mhd"))
+plot_bb = PlotBoundingBox(ItkImage("test_data/image.mhd"), ax1)
 
-plot_ps1 = PlotPlaneSelect(ItkImage("test_data/image.mhd"), title="Plane 1 select", onSetPlane=onPlane1Set)
+plot_ps1 = PlotPlaneSelect(ItkImage("test_data/image.mhd"), ax2, title="Plane 1 select", onSetPlane=onPlane1Set)
 
 plt.show()
