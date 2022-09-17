@@ -196,15 +196,15 @@ plot_ps2 = PlotPlaneSelect(ItkImage("test_data/image.mhd"), ax3, title="Plane 2 
 
 def onPlane1Set(plot: PlotPlaneSelect):
     ((x1, y1), (x2, y2)) = plot.selectedLine
-    if y1 > y2:
+    if x1 > x2:
         x1, y1, x2, y2 = x2, y2, x1, y1
-    quadrant = 0 if x1 > x2 else 90
+    quadrant = -180 if y1 < y2 else 0
 
     a = abs(plot.selectedLine[0][0] - plot.selectedLine[1][0])
     b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
     rad = math.atan(a/b)
-    deg = math.degrees(rad)
-    print(f'atan(x) :{rad}, deg: {deg}')
+    deg = abs(math.degrees(rad) + quadrant)
+    print(f'atan(x) :{rad}, deg: {deg}, q: {quadrant}')
     plot_ps2.image.rotation3d(0, 90, deg)
     plot_ps2.redraw()
 
