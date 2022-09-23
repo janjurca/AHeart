@@ -11,7 +11,7 @@ import glob
 from matplotlib.widgets import Button
 from scipy.interpolate import interp1d
 
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
 
 axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
 
@@ -37,14 +37,14 @@ class ItkImage:
         self.load()
 
     def load(self) -> None:
-        self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")
+        self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
         self.refresh()
 
     def refresh(self) -> None:
         # Convert the image to a  numpy array first and then shuffle the dimensions to get axis in the order z,y,x
         self.ct_scan = sitk.GetArrayFromImage(self.image)
         # Read the origin of the ct_scan, will be used to convert the coordinates from world to voxel and vice versa.
-        self.origin = np.array(list(reversed(self.image.GetOrigin())))
+        self.origin = np.array(list(reversed(self.image.GetOrigin())))  # TODO handle different rotations
         # Read the spacing along each dimension
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
 
@@ -210,8 +210,9 @@ args = parser.parse_args()
 
 for f in glob.glob(args.input):
     plot_ps2 = PlotPlaneSelect(ItkImage(f), ax3, title="Plane 2 select")
-    print(plot_ps2.image.resolution())
+    plot_ps3 = PlotPlaneSelect(ItkImage(f), ax4, title="Plane 3 select")
 
+    # TODO Handle  plane 2 callback
     def onPlane1Set(plot: PlotPlaneSelect):
         ((x1, y1), (x2, y2)) = plot.selectedLine
         if x1 > x2:
@@ -223,7 +224,7 @@ for f in glob.glob(args.input):
         rad = math.atan(a/b)
         deg = abs(math.degrees(rad) + quadrant)
         print(f'atan(x) :{rad}, deg: {deg}, q: {quadrant}')
-        plot_ps2.image.rotation3d(0, 90, deg)
+        plot_ps2.image.rotation3d(0, deg, 0)
         plot_ps2.redraw()
 
     plot_ps1 = PlotPlaneSelect(ItkImage(f), ax2, title="Plane 1 select", onSetPlane=onPlane1Set)
@@ -234,7 +235,7 @@ for f in glob.glob(args.input):
         m = interp1d([0, height], [0, depth])
         _slice = int(m(y1 + abs(y2-y1)*0.6))
 
-        plot_ps1.image.rotation3d(0, 90, 90)
+        plot_ps1.image.rotation3d(180, 90, 90)
         plot_ps1.setIndex(_slice)
         plot_ps1.redraw()
 
@@ -242,8 +243,10 @@ for f in glob.glob(args.input):
 
     def nextFile(event):
         print("Next was pushed")
+        # TODO HANDLE figure close and proper reinit for other image
 
     bnext = Button(axnext, 'Next')
     bnext.on_clicked(nextFile)
 
     plt.show()
+    # TODO Handle data save
