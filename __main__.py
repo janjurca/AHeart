@@ -25,10 +25,6 @@ def enter_axes(event):
     selected_axis = event.inaxes
 
 
-# def leave_axes(event):
-#    selected_axis = None
-
-
 fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 #fig.canvas.mpl_connect('axes_leave_event', leave_axes)
 
