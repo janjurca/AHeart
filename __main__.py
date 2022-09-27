@@ -14,6 +14,8 @@ from scipy.interpolate import interp1d
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
 
 axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
+plane1_angle = 0
+plane2_angle = 0
 
 selected_axis = None
 
@@ -209,11 +211,14 @@ parser.add_argument('--input', action='store', help="Input files selection regex
 args = parser.parse_args()
 
 for f in glob.glob(args.input):
-    plot_ps2 = PlotPlaneSelect(ItkImage(f), ax3, title="Plane 2 select")
+    plane1_angle = 0
+    plane2_angle = 0
+
     plot_ps3 = PlotPlaneSelect(ItkImage(f), ax4, title="Plane 3 select")
 
-    # TODO Handle  plane 2 callback
-    def onPlane1Set(plot: PlotPlaneSelect):
+    def onPlane2Set(plot: PlotPlaneSelect):
+        global plane1_angle
+        global plane2_angle
         ((x1, y1), (x2, y2)) = plot.selectedLine
         if x1 > x2:
             x1, y1, x2, y2 = x2, y2, x1, y1
@@ -222,9 +227,28 @@ for f in glob.glob(args.input):
         a = abs(plot.selectedLine[0][0] - plot.selectedLine[1][0])
         b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
         rad = math.atan(a/b)
-        deg = abs(math.degrees(rad) + quadrant)
-        print(f'atan(x) :{rad}, deg: {deg}, q: {quadrant}')
-        plot_ps2.image.rotation3d(0, deg, 0)
+        plane2_angle = abs(math.degrees(rad) + quadrant)
+        print(f'atan(x) :{rad}, deg: {plane2_angle}, q: {quadrant}')
+        print(plane2_angle, plane1_angle)
+        plot_ps3.image.rotation3d(0, plane1_angle, plane2_angle)
+        plot_ps3.redraw()
+
+    plot_ps2 = PlotPlaneSelect(ItkImage(f), ax3, onSetPlane=onPlane2Set, title="Plane 2 select")
+
+    def onPlane1Set(plot: PlotPlaneSelect):
+        global plane1_angle
+        ((x1, y1), (x2, y2)) = plot.selectedLine
+        if x1 > x2:
+            x1, y1, x2, y2 = x2, y2, x1, y1
+        quadrant = -180 if y1 < y2 else 0
+
+        a = abs(plot.selectedLine[0][0] - plot.selectedLine[1][0])
+        b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
+        rad = math.atan(a/b)
+        plane1_angle = abs(math.degrees(rad) + quadrant)
+
+        print(f'atan(x) :{rad}, deg: {plane1_angle}, q: {quadrant}')
+        plot_ps2.image.rotation3d(0, plane1_angle, 0)
         plot_ps2.redraw()
 
     plot_ps1 = PlotPlaneSelect(ItkImage(f), ax2, title="Plane 1 select", onSetPlane=onPlane1Set)
