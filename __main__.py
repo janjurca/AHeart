@@ -117,7 +117,7 @@ class PlotBoundingBox(VolumeImage):
         self.boundingbox = None
         self.patch = None
         self.onSetBoundingBoxFunc = onSetBoundingBoxFunc
-        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index])
+        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index], cmap='gray')
         self.eventSetup()
 
         def areaSelect(click, release):
@@ -146,7 +146,7 @@ class PlotPlaneSelect(VolumeImage):
         self.plane = None
         self.patch = None
         self.onSetPlane = onSetPlane
-        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index])
+        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index], cmap='gray')
         self.eventSetup()
 
         self.selectedLine = (None, None)
@@ -234,7 +234,7 @@ for f in glob.glob(args.input):
         plane2_angle_2ch = abs(math.degrees(rad) + quadrant)
         print(f'atan(x) :{rad}, deg: {plane2_angle_2ch}, q: {quadrant}')
         print(plane2_angle_2ch, plane1_angle_4ch)
-        plot_ps3.image.rotation3d(0, plane1_angle_4ch, plane2_angle_2ch)
+        plot_ps3.image.rotation3d(0, plane1_angle_4ch, plane2_angle_2ch+90)
         plot_ps3.redraw()
 
     plot_ps2 = PlotPlaneSelect(ItkImage(f), ax3, onSetPlane=onPlane2Set, title="Plane 2 select")
