@@ -203,7 +203,7 @@ class PlotPlaneSelect(VolumeImage):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--input', action='store', help="Input files selection regex.")
+parser.add_argument('--input', action='store', default="test_data/image.mhd",  help="Input files selection regex.")
 args = parser.parse_args()
 
 for f in glob.glob(args.input):
