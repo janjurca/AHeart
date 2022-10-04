@@ -274,6 +274,8 @@ for f in glob.glob(args.input):
         with open(f"{target_dir}/meta.json", 'w') as fp:
             print(plot_bb.boundingbox)
             ((x1, y1), (x2, y2)) = plot_bb.boundingbox
+            ((ps2_x1, ps2_y1), (ps2_x2, ps2_y2)) = plot_ps1.selectedLine
+            ((ps3_x1, ps3_y1), (ps3_x2, ps3_y2)) = plot_ps2.selectedLine
             json.dump({
                 "bounding_box": {
                     "x1": x1,
@@ -281,7 +283,19 @@ for f in glob.glob(args.input):
                     "y1": y1,
                     "y2": y2,
                 },
+                "plane1_points_4ch": {
+                    "x1": ps2_x1,
+                    "x2": ps2_x2,
+                    "y1": ps2_y1,
+                    "y2": ps2_y2,
+                },
                 "plane1_angle_4ch": plane1_angle_4ch,
+                "plane2_points_2ch": {
+                    "x1": ps3_x1,
+                    "x2": ps3_x2,
+                    "y1": ps3_y1,
+                    "y2": ps3_y2,
+                },
                 "plane2_angle_2ch": plane2_angle_2ch,
             }, fp)
             img = sitk.GetImageFromArray(plot_ps3.image.ct_scan)
