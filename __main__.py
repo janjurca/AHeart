@@ -212,8 +212,6 @@ for f in glob.glob(args.input):
     axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
     SA_AXIS = None
 
-    computed_3d_axis = None
-
     def enter_axes(event):
         global selected_axis
         selected_axis = event.inaxes
@@ -229,6 +227,7 @@ for f in glob.glob(args.input):
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
+        global SA_AXIS
         ((x0, y0), (x1, y1)) = plotHLA.selectedLine
         ((x2, y2), (x3, y3)) = plotVLA.selectedLine
         res = plotHLA.image.resolution()[0]
@@ -278,6 +277,36 @@ for f in glob.glob(args.input):
     plotVLA = PlotPlaneSelect(ItkImage(f), VLAax, onSetPlane=onVLASelected)
     plotSA = PlotPlaneSelect(ItkImage(f), SAax)
 
+    def nextFile(event):
+        global SA_AXIS
+        if not SA_AXIS:
+            print("SA AXIS not set. DO IT!")
+            return
+        with open(f"{target_dir}/meta.json", 'w') as fp:
+            data = {
+                "SA": {
+                    "A": {
+                        "x": float(SA_AXIS.points[0].x),
+                        "y": float(SA_AXIS.points[0].y),
+                        "z": float(SA_AXIS.points[0].z)
+                    },
+                    "B": {
+                        "x": float(SA_AXIS.points[1].x),
+                        "y": float(SA_AXIS.points[1].y),
+                        "z": float(SA_AXIS.points[1].z),
+                    },
+                },
+            }
+            print(data)
+            json.dump(data, fp)
+            img = sitk.GetImageFromArray(plotSA.image.ct_scan)
+            img.SetOrigin(plotSA.image.origin)
+            img.SetSpacing(plotSA.image.spacing)
+
+            sitk.WriteImage(img, target_dir + '/image.mhd')
+            plt.close()
+
     bnext = Button(axnext, 'Save and next')
+    bnext.on_clicked(nextFile)
 
     plt.show()
