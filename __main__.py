@@ -11,7 +11,6 @@ import argparse
 import glob
 from matplotlib.widgets import Button
 from scipy.interpolate import interp1d
-from medimage import image
 import os
 import json
 from scipy.spatial.transform import Rotation as R
@@ -44,12 +43,7 @@ class ItkImage:
 
     def load(self) -> None:
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
-        self.orientation = list(image(self.filename).header['AnatomicalOrientation'])
         self.refresh()
-        
-    # def set_orientation(self) -> None:
-    #     
-       
 
     def refresh(self) -> None:
         # Convert the image to a  numpy array first and then shuffle the dimensions to get axis in the order z,y,x
@@ -57,15 +51,6 @@ class ItkImage:
         # Read the origin of the ct_scan, will be used to convert the coordinates from world to voxel and vice versa.
         self.origin = np.array(list(reversed(self.image.GetOrigin())))  # TODO handle different rotations
         # Read the spacing along each dimension
-        if self.orientation[0]!='L':
-            self.ct_scan = np.flip(self.ct_scan, 2)
-            self.orientation[0]='L'
-        if self.orientation[1]!='P':
-            self.ct_scan = np.flip(self.ct_scan, 0)
-            self.orientation[1]='P'
-        if self.orientation[2]!='I':
-            self.ct_scan = np.flip(self.ct_scan, 1)
-            self.orientation[2]='I'
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
 
     def resolution(self) -> Tuple[int, int, int]:
@@ -114,10 +99,6 @@ class ItkImage:
         theta_z = np.deg2rad(theta_z)
         euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
         self.image = self.resample(euler_transform)
-        # self.image = sitk.DICOMOrient(self.image, 'LPS')
-        orient = sitk.DICOMOrientImageFilter()
-        orient.SetDesiredCoordinateOrientation("LPS")
-        self.image = orient.Execute( self.image )
         self.refresh()
 
 
