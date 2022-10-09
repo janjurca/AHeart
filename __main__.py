@@ -217,8 +217,6 @@ for f in glob.glob(args.input):
         selected_axis = event.inaxes
 
     fig.canvas.mpl_connect('axes_enter_event', enter_axes)
-    target_dir = f'{args.output}/{"/".join(f.split("/")[:-1])}'
-    os.makedirs(target_dir, exist_ok=True)
 
     plotHLA, plotVLA, plotSA = None, None, None
 
@@ -279,6 +277,10 @@ for f in glob.glob(args.input):
 
     def nextFile(event):
         global SA_AXIS
+
+        target_dir = f'{args.output}/{"/".join(f.split("/")[:-1])}'
+        os.makedirs(target_dir, exist_ok=True)
+
         if not SA_AXIS:
             print("SA AXIS not set. DO IT!")
             return
