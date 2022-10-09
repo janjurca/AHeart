@@ -1,4 +1,5 @@
 from fileinput import filename
+from time import sleep
 from typing import Tuple
 import SimpleITK as sitk
 import matplotlib.pylab as plt
@@ -258,12 +259,17 @@ for f in glob.glob(args.input):
 
         print("After coords:", (x0, y0, z0), (x1, y1, z1))
 
-        if plotSA.patch:
-            plotSA.patch.remove()
-            plotSA.patch = None
-        plotSA.patch = mlines.Line2D((x0, x1), (y0, y1), lw=2, color='red', alpha=1)
-        plotSA.ax.add_line(plotSA.patch)
-        plotSA.fig.canvas.draw_idle()
+        zeroPoint = Point3D(0, 0, 0)
+        XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
+        YAxis = Line3D(zeroPoint, Point3D(0, 1, 0))
+        ZAxis = Line3D(zeroPoint, Point3D(0, 0, 1))
+        SA_AXIS = Line3D((x0, y0, z0), (x1, y1, z1))
+        X_ANGLE = math.degrees(float(SA_AXIS.angle_between(XAxis)))
+        Y_ANGLE = math.degrees(float(SA_AXIS.angle_between(YAxis)))
+        Z_ANGLE = math.degrees(float(SA_AXIS.angle_between(ZAxis)))
+        print(X_ANGLE, Y_ANGLE, Z_ANGLE)
+        plotSA.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
+        plotSA.redraw()
 
     imageHLA = ItkImage(f)
     imageHLA.rotation3d(0, 90, 270)
