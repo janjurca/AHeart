@@ -209,6 +209,7 @@ args = parser.parse_args()
 for f in glob.glob(args.input):
     fig, (HLAax, VLAax, SAax) = plt.subplots(1, 3)
 
+    target_dir = f'{args.output}/{"/".join(f.split("/")[:-1])}'
     axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
     SA_AXIS = None
 
@@ -276,9 +277,8 @@ for f in glob.glob(args.input):
     plotSA = PlotPlaneSelect(ItkImage(f), SAax)
 
     def nextFile(event):
-        global SA_AXIS
+        global SA_AXIS, target_dir
 
-        target_dir = f'{args.output}/{"/".join(f.split("/")[:-1])}'
         os.makedirs(target_dir, exist_ok=True)
 
         if not SA_AXIS:
