@@ -209,7 +209,7 @@ args = parser.parse_args()
 for f in glob.glob(args.input):
     fig, (HLAax, VLAax, SAax) = plt.subplots(1, 3)
 
-    target_dir = f'{args.output}/{"/".join(f.split("/")[:-1])}'
+    target_dir = f'{args.output}/{"/".join(f.split("/")[-3:-1])}'
     axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
     SA_AXIS = None
 
