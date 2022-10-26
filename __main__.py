@@ -21,7 +21,7 @@ from sympy import Symbol
 from sympy import Point3D
 from sympy.geometry import Line3D
 
-fig, (HLAax, VLAax, SAax) = None, (None, None, None)
+fig, (InitAx, VLAax, HLAax, SAax) = None, (None, None, None, None)
 
 
 class ItkImage:
@@ -207,7 +207,7 @@ args = parser.parse_args()
 
 
 for f in glob.glob(args.input):
-    fig, (HLAax, VLAax, SAax) = plt.subplots(1, 3)
+    fig, (InitAx, VLAax, HLAax, SAax) = plt.subplots(1, 4)
 
     target_dir = f'{args.output}/{"/".join(f.split("/")[-3:-1])}'
     axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
@@ -219,27 +219,45 @@ for f in glob.glob(args.input):
 
     fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
-    plotHLA, plotVLA, plotSA = None, None, None
+    plotInit, plotHLA, plotVLA, plotSA = None, None, None, None
 
-    def onHLASelected(plot: PlotPlaneSelect):
+
+    def onInitSelected(plot: PlotPlaneSelect):
         plotVLA.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
+
+        # plotHLA.image.rotation3d(0, 180-ComputeLineAngle(plot), 90)
+        plotHLA.image.rotation3d(180, 180+ComputeLineAngle(plot), 90)
+
+        plotHLA.redraw()
+
+    # def onVLASelected(plot: PlotPlaneSelect):
+    def onHLASelected(plot: PlotPlaneSelect):
+
         global SA_AXIS
-        ((x0, y0), (x1, y1)) = plotHLA.selectedLine
-        ((x2, y2), (x3, y3)) = plotVLA.selectedLine
+        ((x0, y2), (x1, y3)) = plotVLA.selectedLine
+        ((z0, y0), (z1, y1)) = plotHLA.selectedLine
         res = plotHLA.image.resolution()[0]
         mapper = interp1d([0, res], [0, 1])
         mapper_rev = interp1d([0, 1], [0, plotHLA.image.resolution()[0]])
         mapper100_rev = interp1d([0, 1], [0, plotHLA.image.resolution()[2]])
-        x0, y0, x1, y1, x2, y2, x3, y3 = mapper([x0, y0, x1, y1, x2, y2, x3, y3])
+        # x0, y0, x1, y1, x2, y2, x3, y3 = mapper([x0, y0, x1, y1, x2, y2, x3, y3])
+        x0, y2, x1, y3, z0, y0, z1, y1 = mapper([x0, y2, x1, y3, z0, y0, z1, y1])
 
-        VLA_line = Line(Point(x2, y2), Point(x3, y3))
-        (a, b, c) = VLA_line.coefficients
-        y = Symbol('y')
-        z0 = 1 - float(solve(a*(1-y0) + b*y + c, y)[0])
-        z1 = 1 - float(solve(a*(1-y1) + b*y + c, y)[0])
+        VLA_line = Line(Point(x0, y0), Point(x1, y1))
+        # (a_VLA, b_VLA, c_VLA) = VLA_line.coefficients
+        HLA_line = Line(Point(z0, y0), Point(z1, y1))
+        # (a_HLA, b_HLA, c_HLA) = HLA_line.coefficients
+
+
+
+        # VLA_line = Line(Point(x2, y2), Point(x3, y3))
+        # (a, b, c) = VLA_line.coefficients
+        # y = Symbol('y')
+        # z0 = 1 - float(solve(a*(1-y0) + b*y + c, y)[0])
+        # z1 = 1 - float(solve(a*(1-y1) + b*y + c, y)[0])
         print()
         print("Before:", (x0, y0, z0), (x1, y1, z1))
         print("Before coords:", mapper_rev((x0, y0)), mapper100_rev(z0), mapper_rev((x1, y1)), mapper100_rev(z1))
@@ -266,14 +284,17 @@ for f in glob.glob(args.input):
         Y_ANGLE = math.degrees(float(SA_AXIS.angle_between(YAxis)))
         Z_ANGLE = math.degrees(float(SA_AXIS.angle_between(ZAxis)))
         print(X_ANGLE, Y_ANGLE, Z_ANGLE)
-        plotSA.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
+        # plotSA.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
+        plotSA.image.rotation3d(175-X_ANGLE, 233+Y_ANGLE, 110-Z_ANGLE )
         plotSA.redraw()
 
-    imageHLA = ItkImage(f)
-    imageHLA.rotation3d(0, 90, 270)
 
-    plotHLA = PlotPlaneSelect(imageHLA, HLAax, onSetPlane=onHLASelected)
+    imageInit = ItkImage(f)
+    imageInit.rotation3d(0, 90, 270)
+
+    plotInit = PlotPlaneSelect(imageInit, InitAx, onSetPlane=onInitSelected)
     plotVLA = PlotPlaneSelect(ItkImage(f), VLAax, onSetPlane=onVLASelected)
+    plotHLA = PlotPlaneSelect(ItkImage(f), HLAax, onSetPlane=onHLASelected)
     plotSA = PlotPlaneSelect(ItkImage(f), SAax)
 
     def nextFile(event):
