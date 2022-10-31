@@ -1,11 +1,7 @@
-from fileinput import filename
-from time import sleep
 from typing import Tuple
 import SimpleITK as sitk
 import matplotlib.pylab as plt
 import numpy as np
-import matplotlib.patches as patches
-from matplotlib.widgets import RectangleSelector
 import matplotlib.lines as mlines
 import math
 import argparse
@@ -15,13 +11,10 @@ from scipy.interpolate import interp1d
 import os
 import json
 from scipy.spatial.transform import Rotation as R
-from sympy import Point, Line
-from sympy.solvers import solve
-from sympy import Symbol
 from sympy import Point3D
 from sympy.geometry import Line3D
 
-fig, (HLAax, VLAax, SAax) = None, (None, None, None)
+fig, (InitAx, VLAax, HLAax, SAax) = None, (None, None, None, None)
 
 
 class ItkImage:
@@ -47,11 +40,8 @@ class ItkImage:
         self.refresh()
 
     def refresh(self) -> None:
-        # Convert the image to a  numpy array first and then shuffle the dimensions to get axis in the order z,y,x
         self.ct_scan = sitk.GetArrayFromImage(self.image)
-        # Read the origin of the ct_scan, will be used to convert the coordinates from world to voxel and vice versa.
         self.origin = np.array(list(reversed(self.image.GetOrigin())))  # TODO handle different rotations
-        # Read the spacing along each dimension
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
 
     def resolution(self) -> Tuple[int, int, int]:
@@ -80,7 +70,6 @@ class ItkImage:
         p = self.image.TransformIndexToPhysicalPoint((int(np.ceil(width/2)),
                                                      int(np.ceil(height/2)),
                                                      int(np.ceil(depth/2))))
-        print("center", p)
         return p
 
     def rotation3d(self, theta_x, theta_y, theta_z):
@@ -196,7 +185,6 @@ def ComputeLineAngle(plot: PlotPlaneSelect):
     b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
     rad = math.atan(a/b)
     angle = abs(math.degrees(rad) + quadrant)
-    print(f'atan(x) :{rad}, deg: {angle}, q: {quadrant}')
     return angle
 
 
@@ -207,7 +195,7 @@ args = parser.parse_args()
 
 
 for f in glob.glob(args.input):
-    fig, (HLAax, VLAax, SAax) = plt.subplots(1, 3)
+    fig, (InitAx, VLAax, HLAax, SAax) = plt.subplots(1, 4)
 
     target_dir = f'{args.output}/{"/".join(f.split(os.sep)[-3:-1])}'
     axnext = fig.add_axes([0.81, 0.05, 0.1, 0.075])
@@ -219,43 +207,38 @@ for f in glob.glob(args.input):
 
     fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
-    plotHLA, plotVLA, plotSA = None, None, None
+    plotInit, plotHLA, plotVLA, plotSA = None, None, None, None
 
-    def onHLASelected(plot: PlotPlaneSelect):
+
+    def onInitSelected(plot: PlotPlaneSelect):
         plotVLA.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
+
+        plotHLA.image.rotation3d(180, 180+ComputeLineAngle(plot), 90)
+
+        plotHLA.redraw()
+
+    def onHLASelected(plot: PlotPlaneSelect):
+
         global SA_AXIS
-        ((x0, y0), (x1, y1)) = plotHLA.selectedLine
-        ((x2, y2), (x3, y3)) = plotVLA.selectedLine
+        ((x0, y2), (x1, y3)) = plotVLA.selectedLine
+        ((z0, y0), (z1, y1)) = plotHLA.selectedLine
         res = plotHLA.image.resolution()[0]
         mapper = interp1d([0, res], [0, 1])
-        mapper_rev = interp1d([0, 1], [0, plotHLA.image.resolution()[0]])
+        mapper_rev = interp1d([0, 1], [0, plotVLA.image.resolution()[0]])
         mapper100_rev = interp1d([0, 1], [0, plotHLA.image.resolution()[2]])
-        x0, y0, x1, y1, x2, y2, x3, y3 = mapper([x0, y0, x1, y1, x2, y2, x3, y3])
+        x0, y2, x1, y3, z0, y0, z1, y1 = mapper([x0, y2, x1, y3, z0, y0, z1, y1])
 
-        VLA_line = Line(Point(x2, y2), Point(x3, y3))
-        (a, b, c) = VLA_line.coefficients
-        y = Symbol('y')
-        z0 = 1 - float(solve(a*(1-y0) + b*y + c, y)[0])
-        z1 = 1 - float(solve(a*(1-y1) + b*y + c, y)[0])
-        print()
-        print("Before:", (x0, y0, z0), (x1, y1, z1))
-        print("Before coords:", mapper_rev((x0, y0)), mapper100_rev(z0), mapper_rev((x1, y1)), mapper100_rev(z1))
         x0, y0, z0, x1, y1, z1 = x0 - 0.5, y0 - 0.5, z0 - 0.5, x1 - 0.5, y1 - 0.5, z1 - 0.5
-        print("Sub:", (x0, y0, z0), (x1, y1, z1))
         r = R.from_euler('xyz', [0, 90, 270], degrees=True)
         x0, y0, z0 = r.apply(np.array([x0, y0, z0]))
         x1, y1, z1 = r.apply(np.array([x1, y1, z1]))
-        print("Sub2:", (x0, y0, z0), (x1, y1, z1))
         x0, y0, z0, x1, y1, z1 = x0 + 0.5, y0 + 0.5, z0 + 0.5, x1 + 0.5, y1 + 0.5, z1 + 0.5
-        print("After:", (x0, y0, z0), (x1, y1, z1))
 
-        x0, y0, x1, y1 = mapper_rev([x0, y0, x1, y1])
-        z0, z1 = mapper100_rev([z0, z1])
-
-        print("After coords:", (x0, y0, z0), (x1, y1, z1))
+        x0, x1 = mapper_rev([x0, x1])
+        z0, y0, z1, y1 = mapper100_rev([z0, y0, z1, y1])
 
         zeroPoint = Point3D(0, 0, 0)
         XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
@@ -265,15 +248,16 @@ for f in glob.glob(args.input):
         X_ANGLE = math.degrees(float(SA_AXIS.angle_between(XAxis)))
         Y_ANGLE = math.degrees(float(SA_AXIS.angle_between(YAxis)))
         Z_ANGLE = math.degrees(float(SA_AXIS.angle_between(ZAxis)))
-        print(X_ANGLE, Y_ANGLE, Z_ANGLE)
-        plotSA.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
+        plotSA.image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE )
         plotSA.redraw()
 
-    imageHLA = ItkImage(f)
-    imageHLA.rotation3d(0, 90, 270)
 
-    plotHLA = PlotPlaneSelect(imageHLA, HLAax, onSetPlane=onHLASelected)
+    imageInit = ItkImage(f)
+    imageInit.rotation3d(0, 90, 270)
+
+    plotInit = PlotPlaneSelect(imageInit, InitAx, onSetPlane=onInitSelected)
     plotVLA = PlotPlaneSelect(ItkImage(f), VLAax, onSetPlane=onVLASelected)
+    plotHLA = PlotPlaneSelect(ItkImage(f), HLAax, onSetPlane=onHLASelected)
     plotSA = PlotPlaneSelect(ItkImage(f), SAax)
 
     def nextFile(event):
