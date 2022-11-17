@@ -189,7 +189,8 @@ def ComputeLineAngle(plot: PlotPlaneSelect):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--input', action='store', default="Gomez_T1/a001/image.mhd",  help="Input files selection regex.")
+# parser.add_argument('--input', action='store', default="D:\Skola\Doktorske\Projects\Cardio\synth\krychla.mhd",  help="Input files selection regex.")
+parser.add_argument('--input', action='store', default="Gomez_T1/a005/image.mhd",  help="Input files selection regex.")
 parser.add_argument('--output', action='store', default="output/",  help="Input files selection regex.")
 args = parser.parse_args()
 
@@ -215,9 +216,47 @@ for f in glob.glob(args.input):
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
+  
+        global HLA_AXIS
+        ((x0, y2), (x1, y3)) = plotInit.selectedLine
+        ((z0, y0), (z1, y1)) = plotVLA.selectedLine
+        res_Init_x = plotInit.image.resolution()[0]
+        res_Init_y = plotInit.image.resolution()[1]
+        res_VLA_z = plotVLA.image.resolution()[0]
+        res_VLA_y = plotVLA.image.resolution()[1]
+        mapper_init_x = interp1d([0, res_Init_x], [0, 1])
+        mapper_init_y = interp1d([0, res_Init_y], [0, 1])
+        mapper_VLA_z = interp1d([0, res_VLA_z], [0, 1])
+        mapper_VLA_y = interp1d([0, res_VLA_y], [0, 1])
+        z0, z1 = mapper_VLA_z([z0, z1])
+        y0, y1 = mapper_VLA_y([y0, y1]) 
+        x0, x1 = mapper_init_x([x0, x1])
+        y2, y3 = mapper_init_y([y2, y3])
 
-        plotHLA.image.rotation3d(180, 180+ComputeLineAngle(plot), 90)
+        x0, y0, z0, x1, y1, z1 = x0 - 0.5, y0 - 0.5, z0 - 0.5, x1 - 0.5, y1 - 0.5, z1 - 0.5
+        r = R.from_euler('xyz', [0, 0, 90], degrees=True)
+        x0, y0, z0 = r.apply(np.array([x0, y0, z0]))
+        x1, y1, z1 = r.apply(np.array([x1, y1, z1]))
+        x0, y0, z0, x1, y1, z1 = x0 + 0.5, y0 + 0.5, z0 + 0.5, x1 + 0.5, y1 + 0.5, z1 + 0.5
 
+        mapper_rev_init_x = interp1d([0, 1], [0, res_Init_x])
+        mapper_rev_init_y = interp1d([0, 1], [0, res_Init_y])
+        mapper_rev_VLA_z = interp1d([0, 1], [0, res_VLA_z])
+        mapper_rev_VLA_y = interp1d([0, 1], [0, res_VLA_y])
+        z0, z1 = mapper_rev_VLA_z([z0, z1])
+        y0, y1 = mapper_rev_VLA_y([y0, y1]) 
+        x0, x1 = mapper_rev_init_x([x0, x1])
+        y2, y3 = mapper_rev_init_y([y2, y3])
+
+        zeroPoint = Point3D(0, 0, 0)
+        XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
+        YAxis = Line3D(zeroPoint, Point3D(0, 1, 0))
+        ZAxis = Line3D(zeroPoint, Point3D(0, 0, 1))
+        HLA_AXIS = Line3D((x0, y0, z0), (x1, y1, z1))
+        X_ANGLE = math.degrees(float(HLA_AXIS.angle_between(XAxis)))
+        Y_ANGLE = math.degrees(float(HLA_AXIS.angle_between(YAxis)))
+        Z_ANGLE = math.degrees(float(HLA_AXIS.angle_between(ZAxis)))
+        plotHLA.image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE )
         plotHLA.redraw()
 
     def onHLASelected(plot: PlotPlaneSelect):
