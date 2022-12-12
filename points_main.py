@@ -138,12 +138,14 @@ class PlotPlaneSelect(VolumeImage):
                 return
 
             self.pressed = True
-            if self.selectedLine[0]!= None:
+            if self.selectedLine[0]!= None and self.selectedLine[1]!= None:
+                self.selectedLine = ((event.xdata, event.ydata, self.index), None)
+            elif self.selectedLine[0]!= None and self.selectedLine[1]== None:
                 self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata, self.index))
-            else:
+            elif self.selectedLine[0]== None and self.selectedLine[1]== None:
                 self.selectedLine = ((event.xdata, event.ydata, self.index), None)
             
-            print('x: {} and y: {} and z: {}'.format(event.xdata, event.ydata, self.index))
+
             self.pressed = False
 
             ((x1, y1, z1), (x2, y2, z2)) = self.selectedLine
@@ -230,6 +232,8 @@ for f in glob.glob(args.input):
 
     def onInitSelected(plot: PlotPlaneSelect):
         x_angle, y_angle, z_angle = ComputeLineAngles(plot)
+        
+        plt.plot(plot.selectedLine[0], marker='v', color="red")
         plotVLA.image.rotation3d(x_angle,  y_angle, 90-z_angle)
         plotVLA.redraw()
 

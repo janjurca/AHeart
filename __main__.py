@@ -133,23 +133,25 @@ class PlotPlaneSelect(VolumeImage):
         self.selectedLine = (None, None)
         self.pressed = False
 
-        def onButtonPress(event):
+        def onButtonsPressed(event):
             if selected_axis is not self.ax:
                 return
 
             self.pressed = True
-            self.selectedLine = ((event.xdata, event.ydata), None)
-
-        def onButtonRelease(event):
-            if selected_axis is not self.ax:
-                return
+            if self.selectedLine[0]!= None and self.selectedLine[1]!= None:
+                self.selectedLine = ((event.xdata, event.ydata, self.index), None)
+            elif self.selectedLine[0]!= None and self.selectedLine[1]== None:
+                self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata, self.index))
+            elif self.selectedLine[0]== None and self.selectedLine[1]== None:
+                self.selectedLine = ((event.xdata, event.ydata, self.index), None)
+            
 
             self.pressed = False
-            self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
-            ((x1, y1), (x2, y2)) = self.selectedLine
+
+            ((x1, y1, z1), (x2, y2, z2)) = self.selectedLine
             if x1 > x2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            self.selectedLine = ((x1, y1), (x2, y2))
+                x1, y1, z1, x2, y2, z2 = x2, y2, z2, x1, y1, z1
+            self.selectedLine = ((x1, y1, z1), (x2, y2, z2))
 
             if self.onSetPlane:
                 self.onSetPlane(self)
@@ -170,26 +172,43 @@ class PlotPlaneSelect(VolumeImage):
             self.ax.add_line(self.patch)
             self.fig.canvas.draw_idle()
 
-        self.fig.canvas.mpl_connect('button_press_event', onButtonPress)
         self.fig.canvas.mpl_connect('motion_notify_event', onMouseMove)
-        self.fig.canvas.mpl_connect('button_release_event', onButtonRelease)
+        self.fig.canvas.mpl_connect('button_press_event', onButtonsPressed)
 
 
-def ComputeLineAngle(plot: PlotPlaneSelect):
-    ((x1, y1), (x2, y2)) = plot.selectedLine
+def ComputeLineAngles(plot: PlotPlaneSelect):
+    ((x1, y1, z1), (x2, y2, z2)) = plot.selectedLine
     if x1 > x2:
-        x1, y1, x2, y2 = x2, y2, x1, y1
-    quadrant = -180 if y1 < y2 else 0
+        x1, y1, z1, x2, y2, z2 = x2, y2, z2, x1, y1, z1
 
-    a = abs(plot.selectedLine[0][0] - plot.selectedLine[1][0])
-    b = abs(plot.selectedLine[0][1] - plot.selectedLine[1][1])
-    rad = math.atan(a/b)
-    angle = abs(math.degrees(rad) + quadrant)
-    return angle
+    res_x = plot.image.resolution()[0]
+    res_y = plot.image.resolution()[1]
+    res_z = plot.image.resolution()[2]
+
+    mapper_init_x = interp1d([0, res_x], [0, 1])
+    mapper_init_y = interp1d([0, res_y], [0, 1])
+    mapper_init_z = interp1d([0, res_z], [0, 1])
+   
+    x1, x2 = mapper_init_x([x1, x2])
+    y1, y2 = mapper_init_y([y1, y2])
+    z1, z2 = mapper_init_y([z1, z2])
+
+    zeroPoint = Point3D(0, 0, 0)
+    XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
+    YAxis = Line3D(zeroPoint, Point3D(0, 1, 0))
+    ZAxis = Line3D(zeroPoint, Point3D(0, 0, 1))
+    Axis = Line3D((x1, y1, z1), (x2, y2, z2))
+    X_ANGLE = math.degrees(float(Axis.angle_between(XAxis)))
+    Y_ANGLE = math.degrees(float(Axis.angle_between(YAxis)))
+    Z_ANGLE = math.degrees(float(Axis.angle_between(ZAxis)))
+
+    return X_ANGLE, Y_ANGLE, Z_ANGLE
 
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--input', action='store', default="D:\Skola\Doktorske\Projects\Cardio\synth\krychla.mhd",  help="Input files selection regex.")
+# parser.add_argument('--input', action='store', default="E:\Projects\Cardio\pokus2\krychla_x.mhd",  help="Input files selection regex.")
+
 parser.add_argument('--input', action='store', default="Gomez_T1/a005/image.mhd",  help="Input files selection regex.")
 parser.add_argument('--output', action='store', default="output/",  help="Input files selection regex.")
 args = parser.parse_args()
@@ -212,82 +231,28 @@ for f in glob.glob(args.input):
 
 
     def onInitSelected(plot: PlotPlaneSelect):
-        plotVLA.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
+        x_angle, y_angle, z_angle = ComputeLineAngles(plot)
+        
+        plt.plot(plot.selectedLine[0], marker='v', color="red")
+        plotVLA.image.rotation3d(x_angle,  y_angle, 90-z_angle)
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
   
         global HLA_AXIS
-        ((x0, y2), (x1, y3)) = plotInit.selectedLine
-        ((z0, y0), (z1, y1)) = plotVLA.selectedLine
-        res_Init_x = plotInit.image.resolution()[0]
-        res_Init_y = plotInit.image.resolution()[1]
-        res_VLA_z = plotVLA.image.resolution()[0]
-        res_VLA_y = plotVLA.image.resolution()[1]
-        mapper_init_x = interp1d([0, res_Init_x], [0, 1])
-        mapper_init_y = interp1d([0, res_Init_y], [0, 1])
-        mapper_VLA_z = interp1d([0, res_VLA_z], [0, 1])
-        mapper_VLA_y = interp1d([0, res_VLA_y], [0, 1])
-        z0, z1 = mapper_VLA_z([z0, z1])
-        y0, y1 = mapper_VLA_y([y0, y1]) 
-        x0, x1 = mapper_init_x([x0, x1])
-        y2, y3 = mapper_init_y([y2, y3])
 
-        x0, y0, z0, x1, y1, z1 = x0 - 0.5, y0 - 0.5, z0 - 0.5, x1 - 0.5, y1 - 0.5, z1 - 0.5
-        r = R.from_euler('xyz', [0, 0, 90], degrees=True)
-        x0, y0, z0 = r.apply(np.array([x0, y0, z0]))
-        x1, y1, z1 = r.apply(np.array([x1, y1, z1]))
-        x0, y0, z0, x1, y1, z1 = x0 + 0.5, y0 + 0.5, z0 + 0.5, x1 + 0.5, y1 + 0.5, z1 + 0.5
-
-        mapper_rev_init_x = interp1d([0, 1], [0, res_Init_x])
-        mapper_rev_init_y = interp1d([0, 1], [0, res_Init_y])
-        mapper_rev_VLA_z = interp1d([0, 1], [0, res_VLA_z])
-        mapper_rev_VLA_y = interp1d([0, 1], [0, res_VLA_y])
-        z0, z1 = mapper_rev_VLA_z([z0, z1])
-        y0, y1 = mapper_rev_VLA_y([y0, y1]) 
-        x0, x1 = mapper_rev_init_x([x0, x1])
-        y2, y3 = mapper_rev_init_y([y2, y3])
-
-        zeroPoint = Point3D(0, 0, 0)
-        XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
-        YAxis = Line3D(zeroPoint, Point3D(0, 1, 0))
-        ZAxis = Line3D(zeroPoint, Point3D(0, 0, 1))
-        HLA_AXIS = Line3D((x0, y0, z0), (x1, y1, z1))
-        X_ANGLE = math.degrees(float(HLA_AXIS.angle_between(XAxis)))
-        Y_ANGLE = math.degrees(float(HLA_AXIS.angle_between(YAxis)))
-        Z_ANGLE = math.degrees(float(HLA_AXIS.angle_between(ZAxis)))
-        plotHLA.image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE )
+        x_angle_Init, y_angle_Init, z_angle_Init = ComputeLineAngles(plotInit)
+        x_angle_VLA, y_angle_VLA, z_angle_VLA = ComputeLineAngles(plotVLA)
+       
+        plotHLA.image.rotation3d(x_angle_Init, y_angle_VLA, z_angle_VLA )
         plotHLA.redraw()
 
     def onHLASelected(plot: PlotPlaneSelect):
 
-        global SA_AXIS
-        ((x0, y2), (x1, y3)) = plotVLA.selectedLine
-        ((z0, y0), (z1, y1)) = plotHLA.selectedLine
-        res = plotHLA.image.resolution()[0]
-        mapper = interp1d([0, res], [0, 1])
-        mapper_rev = interp1d([0, 1], [0, plotVLA.image.resolution()[0]])
-        mapper100_rev = interp1d([0, 1], [0, plotHLA.image.resolution()[2]])
-        x0, y2, x1, y3, z0, y0, z1, y1 = mapper([x0, y2, x1, y3, z0, y0, z1, y1])
+        x_angle_HLA, y_angle_HLA, z_angle_HLA = ComputeLineAngles(plotHLA)
+        x_angle_VLA, y_angle_VLA, z_angle_VLA = ComputeLineAngles(plotVLA)
 
-        x0, y0, z0, x1, y1, z1 = x0 - 0.5, y0 - 0.5, z0 - 0.5, x1 - 0.5, y1 - 0.5, z1 - 0.5
-        r = R.from_euler('xyz', [0, 90, 270], degrees=True)
-        x0, y0, z0 = r.apply(np.array([x0, y0, z0]))
-        x1, y1, z1 = r.apply(np.array([x1, y1, z1]))
-        x0, y0, z0, x1, y1, z1 = x0 + 0.5, y0 + 0.5, z0 + 0.5, x1 + 0.5, y1 + 0.5, z1 + 0.5
-
-        x0, x1 = mapper_rev([x0, x1])
-        z0, y0, z1, y1 = mapper100_rev([z0, y0, z1, y1])
-
-        zeroPoint = Point3D(0, 0, 0)
-        XAxis = Line3D(zeroPoint, Point3D(1, 0, 0))
-        YAxis = Line3D(zeroPoint, Point3D(0, 1, 0))
-        ZAxis = Line3D(zeroPoint, Point3D(0, 0, 1))
-        SA_AXIS = Line3D((x0, y0, z0), (x1, y1, z1))
-        X_ANGLE = math.degrees(float(SA_AXIS.angle_between(XAxis)))
-        Y_ANGLE = math.degrees(float(SA_AXIS.angle_between(YAxis)))
-        Z_ANGLE = math.degrees(float(SA_AXIS.angle_between(ZAxis)))
-        plotSA.image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE )
+        plotSA.image.rotation3d(x_angle_VLA, y_angle_HLA, z_angle_HLA )
         plotSA.redraw()
 
 
