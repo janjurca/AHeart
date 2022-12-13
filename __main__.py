@@ -142,19 +142,20 @@ class PlotPlaneSelect(VolumeImage):
                 self.selectedLine = ((event.xdata, event.ydata, self.index), None)
             elif self.selectedLine[0]!= None and self.selectedLine[1]== None:
                 self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata, self.index))
+                
+                self.pressed = False
+
+                ((x1, y1, z1), (x2, y2, z2)) = self.selectedLine
+                if x1 > x2:
+                    x1, y1, z1, x2, y2, z2 = x2, y2, z2, x1, y1, z1
+                self.selectedLine = ((x1, y1, z1), (x2, y2, z2))
+
+                if self.onSetPlane:
+                    self.onSetPlane(self)
             elif self.selectedLine[0]== None and self.selectedLine[1]== None:
                 self.selectedLine = ((event.xdata, event.ydata, self.index), None)
             
-
             self.pressed = False
-
-            ((x1, y1, z1), (x2, y2, z2)) = self.selectedLine
-            if x1 > x2:
-                x1, y1, z1, x2, y2, z2 = x2, y2, z2, x1, y1, z1
-            self.selectedLine = ((x1, y1, z1), (x2, y2, z2))
-
-            if self.onSetPlane:
-                self.onSetPlane(self)
 
         def onMouseMove(event):
             if selected_axis is not self.ax:
@@ -234,7 +235,7 @@ for f in glob.glob(args.input):
         x_angle, y_angle, z_angle = ComputeLineAngles(plot)
         
         plt.plot(plot.selectedLine[0], marker='v', color="red")
-        plotVLA.image.rotation3d(x_angle,  y_angle, 90-z_angle)
+        plotVLA.image.rotation3d(x_angle,  y_angle, z_angle)
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
@@ -244,7 +245,7 @@ for f in glob.glob(args.input):
         x_angle_Init, y_angle_Init, z_angle_Init = ComputeLineAngles(plotInit)
         x_angle_VLA, y_angle_VLA, z_angle_VLA = ComputeLineAngles(plotVLA)
        
-        plotHLA.image.rotation3d(x_angle_Init, y_angle_VLA, z_angle_VLA )
+        plotHLA.image.rotation3d(z_angle_Init, x_angle_VLA, 90+y_angle_VLA )
         plotHLA.redraw()
 
     def onHLASelected(plot: PlotPlaneSelect):
