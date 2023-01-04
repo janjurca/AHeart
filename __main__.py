@@ -163,15 +163,15 @@ class PlotPlaneSelect(VolumeImage):
 
             if not self.pressed:
                 return
-            self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
-            if self.patch:
-                self.patch.remove()
-                self.patch = None
+            # self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
+            # if self.patch:
+            #     self.patch.remove()
+            #     self.patch = None
 
-            x, y = ((self.selectedLine[0][0], self.selectedLine[1][0]), (self.selectedLine[0][1], self.selectedLine[1][1]))
-            self.patch = mlines.Line2D(x, y, lw=2, color='red', alpha=1)
-            self.ax.add_line(self.patch)
-            self.fig.canvas.draw_idle()
+            # x, y = ((self.selectedLine[0][0], self.selectedLine[1][0]), (self.selectedLine[0][1], self.selectedLine[1][1]))
+            # self.patch = mlines.Line2D(x, y, lw=2, color='red', alpha=1)
+            # self.ax.add_line(self.patch)
+            # self.fig.canvas.draw_idle()
 
         self.fig.canvas.mpl_connect('motion_notify_event', onMouseMove)
         self.fig.canvas.mpl_connect('button_press_event', onButtonsPressed)
@@ -234,8 +234,9 @@ for f in glob.glob(args.input):
     def onInitSelected(plot: PlotPlaneSelect):
         x_angle, y_angle, z_angle = ComputeLineAngles(plot)
         
-        plt.plot(plot.selectedLine[0], marker='v', color="red")
-        plotVLA.image.rotation3d(x_angle,  y_angle, z_angle)
+        # plt.plot(plot.selectedLine[0], marker='v', color="red")
+        # plotVLA.image.rotation3d(x_angle,  y_angle, z_angle)
+        plotVLA.image.rotation3d(x_angle, z_angle, y_angle)
         plotVLA.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
@@ -244,8 +245,10 @@ for f in glob.glob(args.input):
 
         x_angle_Init, y_angle_Init, z_angle_Init = ComputeLineAngles(plotInit)
         x_angle_VLA, y_angle_VLA, z_angle_VLA = ComputeLineAngles(plotVLA)
-       
-        plotHLA.image.rotation3d(z_angle_Init, x_angle_VLA, 90+y_angle_VLA )
+
+        plotHLA.image.rotation3d(z_angle_Init, y_angle_VLA-90, x_angle_VLA)
+ 
+        # plotHLA.image.rotation3d(z_angle_Init, x_angle_VLA, 90+y_angle_VLA )
         plotHLA.redraw()
 
     def onHLASelected(plot: PlotPlaneSelect):
@@ -253,7 +256,8 @@ for f in glob.glob(args.input):
         x_angle_HLA, y_angle_HLA, z_angle_HLA = ComputeLineAngles(plotHLA)
         x_angle_VLA, y_angle_VLA, z_angle_VLA = ComputeLineAngles(plotVLA)
 
-        plotSA.image.rotation3d(x_angle_VLA, y_angle_HLA, z_angle_HLA )
+        # plotSA.image.rotation3d(x_angle_VLA, y_angle_HLA, z_angle_HLA )
+        plotSA.image.rotation3d(x_angle_VLA, x_angle_HLA, y_angle_HLA )
         plotSA.redraw()
 
 
